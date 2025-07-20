@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, session, request, jsonify
+from flask import Flask, redirect, url_for, session, request, jsonify,render_template
 from authlib.integrations.flask_client import OAuth
 import logging
 import os
@@ -13,37 +13,37 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your_secret_key')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+
 # OAuth setup
 oauth = OAuth(app)
-google = oauth.remote_app(
-    'google',
-    consumer_key=os.environ.get('GOOGLE_CLIENT_ID'),
-    consumer_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
-    request_token_params={
-        'scope': 'email profile'
-    },
-    base_url='https://www.googleapis.com/oauth2/v1/',
-    request_token_url=None,
-    access_token_method='POST',
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
+google = oauth.register(
+    name='google',
+    server_metadata_url=CONF_URL,
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+
 )
 
 @app.route('/')
-def index():
-    if 'google_token' in session:
-        me = google.get('userinfo')
-        logger.info(f"User logged in: {me.data['email']}")
-        return jsonify(me.data)
-    return 'Hello! <a href="/login">Login with Google</a>'
+def homepage():
+    user = session.get('user')
+    return render_template('home.html', user=user)
 
 @app.route('/login')
 def login():
-    return google.authorize(callback=url_for('authorized', _external=True))
+    redirect_uri = url_for('authorized', _external=True)
+    return google.authorize_redirect(redirect_uri)
 
-@app.route('/login/authorized')
+@app.route('/authorize')
 def authorized():
-    response = google.authorized_response()
+    logging.info("I am inside Authorized_code")
+    logging.debug(oauth)
+    response = google.authorize_access_token()
     if response is None or response.get('access_token') is None:
         logger.warning('Access denied or no access token provided.')
         return 'Access denied: reason={} error={}'.format(
@@ -51,13 +51,22 @@ def authorized():
             request.args['error_description']
         )
     session['google_token'] = (response['access_token'], '')
-    me = google.get('userinfo')
-    logger.info(f"User authorized: {me.data['email']}")
-    return redirect(url_for('index'))
+    me = response.get('userinfo')
+    logger.info(f"User authorized: {me['email']}")
+    return redirect(url_for('homepage'))
 
-@google.tokengetter
-def get_google_oauth_token():
-    return session.get('google_token')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect('/')
+
+
+
+
+# @google.tokengetter
+# def get_google_oauth_token():
+#     return session.get('google_token')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
