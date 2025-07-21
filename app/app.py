@@ -26,13 +26,24 @@ google = oauth.register(
     client_kwargs={
         'scope': 'openid email profile'
     }
-
 )
 
+# @app.route('/')
+# def homepage():
+#     user = session.get('user')
+#     return render_template('home.html', user=user)
+
 @app.route('/')
-def homepage():
-    user = session.get('user')
-    return render_template('home.html', user=user)
+def index():
+    user = session.get('google_token')
+    if user:
+        return f"""
+            <h2>Welcome abc</h2>
+            <p>Email: def </p>
+            <img src="abc" width="100"><br>
+            <a href="/logout">Logout</a>
+        """
+    return '<a href="/login">Login with Google</a>'
 
 @app.route('/login')
 def login():
@@ -53,18 +64,15 @@ def authorized():
     session['google_token'] = (response['access_token'], '')
     me = response.get('userinfo')
     logger.info(f"User authorized: {me['email']}")
-    return redirect(url_for('homepage'))
+    return redirect(url_for('index'))
 
 
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
+    session.clear()
     return redirect('/')
 
 
-
-
-# @google.tokengetter
 # def get_google_oauth_token():
 #     return session.get('google_token')
 
