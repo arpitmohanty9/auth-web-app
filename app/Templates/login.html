@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login to Your App</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Identity Services Library for Google OAuth -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        /* Custom styles for a more polished look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Gradient background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px; /* Add padding for small screens */
+            box-sizing: border-box; /* Ensure padding is included in element's total width and height */
+        }
+        .login-card {
+            background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent white */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Deeper shadow */
+            border-radius: 1.5rem; /* More rounded corners */
+            padding: 2.5rem; /* More padding */
+            max-width: 450px; /* Max width for the card */
+            width: 100%; /* Full width on smaller screens */
+            animation: fadeIn 0.8s ease-out; /* Fade-in animation */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-field {
+            border: 1px solid #cbd5e0; /* Light gray border */
+            transition: all 0.3s ease; /* Smooth transition for focus */
+        }
+        .input-field:focus {
+            border-color: #667eea; /* Primary color on focus */
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2); /* Soft focus ring */
+            outline: none;
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); /* Gradient button */
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px); /* Lift effect on hover */
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); /* Deeper shadow on hover */
+        }
+        .message-box {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s ease-in-out;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .message-box.error {
+            background-color: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fca5a5;
+        }
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #10b981;
+            border: 1px solid #a7f3d0;
+        }
+        .btn-google {
+            background-color: #6b86b1; /* Google Blue */
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .btn-google:hover {
+            background-color: #724775; /* Darker Google Blue on hover */
+        }
+        .btn-google img {
+            height: 1.25rem; /* Adjust Google icon size */
+            width: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">Welcome Back!</h2>
+
+        <form id="loginForm" action="/login" method="POST">
+            <div class="mb-5">
+                <label for="username" class="block text-gray-700 text-sm font-medium mb-2">Username or Email</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username or email"
+                       class="input-field w-full px-4 py-2 rounded-lg text-gray-800 focus:ring-2 focus:ring-blue-300">
+                <p id="usernameError" class="text-red-500 text-xs mt-1 hidden">Please enter your username or email.</p>
+            </div>
+
+            <div class="mb-6 relative">
+                <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password"
+                       class="input-field w-full px-4 py-2 rounded-lg text-gray-800 focus:ring-2 focus:ring-blue-300 pr-10">
+                <button type="button" id="togglePassword"
+                        class="absolute inset-y-0 right-0 top-7 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+                <p id="passwordError" class="text-red-500 text-xs mt-1 hidden">Please enter your password.</p>
+            </div>
+
+            <div id="messageBox" class="message-box hidden"></div>
+
+            <button type="submit"
+                    class="btn-primary w-full text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75">
+                Log In
+            </button>
+        </form>
+
+        <div class="mt-4 text-center text-gray-600 text-sm">
+            Or continue with
+        </div>
+
+        <!-- Google OAuth Button -->
+        <div class="mt-4">
+            <button type="button" id="googleSignInBtn"
+                    class="btn-google w-full rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon">
+                Sign in with Google
+            </button>
+        </div>
+
+        <div class="mt-6 text-center text-sm">
+            <a href="#" class="text-indigo-600 hover:underline font-medium">Forgot Password?</a>
+            <span class="text-gray-600 mx-2">&bull;</span>
+            <a href="#" class="text-indigo-600 hover:underline font-medium">Don't have an account? Sign Up</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const togglePassword = document.getElementById('togglePassword');
+            const messageBox = document.getElementById('messageBox');
+            const googleSignInBtn = document.getElementById('googleSignInBtn');
+
+            // Function to display messages
+            function showMessage(message, type) {
+                messageBox.textContent = message;
+                messageBox.className = `message-box show ${type}`;
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                    messageBox.classList.add('hidden'); // Ensure it's fully hidden
+                }, 5000);
+            }
+
+            // Toggle password visibility
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                // Optionally change the eye icon here if you have two icons
+            });
+
+            // Basic client-side validation for traditional login
+            loginForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                let isValid = true;
+
+                // Clear previous errors
+                document.getElementById('usernameError').classList.add('hidden');
+                document.getElementById('passwordError').classList.add('hidden');
+                messageBox.classList.remove('show', 'error', 'success'); // Hide any previous messages
+
+                if (usernameInput.value.trim() === '') {
+                    document.getElementById('usernameError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (passwordInput.value.trim() === '') {
+                    document.getElementById('passwordError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    // In a real Flask app, you would send this data to your server
+                    // using fetch API or a regular form submission.
+                    // For demonstration, we'll simulate a submission.
+
+                    // Example of how to send data with fetch:
+                    /*
+                    fetch(loginForm.action, {
+                        method: loginForm.method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            username: usernameInput.value,
+                            password: passwordInput.value
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showMessage('Login successful! Redirecting...', 'success');
+                            // window.location.href = '/dashboard'; // Redirect on success
+                        } else {
+                            showMessage(data.message || 'Login failed. Please try again.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('An error occurred. Please try again later.', 'error');
+                    });
+                    */
+
+                    // For now, just show a success message
+                    showMessage('Traditional form submitted! (This is a demo, no actual login occurred)', 'success');
+                    console.log('Form would be submitted to Flask:', {
+                        username: usernameInput.value,
+                        password: passwordInput.value
+                    });
+
+                } else {
+                    showMessage('Please correct the errors in the form.', 'error');
+                }
+            });
+
+            // --- Google OAuth Integration ---
+
+            // The GOOGLE_CLIENT_ID will now be passed from the Flask backend
+            // Make sure your Flask route renders this template with `google_client_id` context variable.
+            const GOOGLE_CLIENT_ID = "{{ google_client_id }}"; // Jinja2 placeholder
+
+            // Check if google.accounts.id is available
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleGoogleCredentialResponse // Function to handle the response
+                });
+                
+                googleSignInBtn.addEventListener('click', () => {
+                    // When the custom button is clicked, we redirect to the Flask route
+                    // that initiates the Google OAuth flow.
+                    // Flask will handle the redirect to Google's authorization server.
+                    window.location.href = '/login/google';
+                });
+                // Render the Google Sign-In button
+                // You can choose to render a custom button or use Google's default button
+                // For a custom button, you'd trigger google.accounts.id.prompt() or google.accounts.id.renderButton()
+                // on your custom button's click event.
+                // Here, we're attaching it to the custom button we created.
+                // googleSignInBtn.addEventListener('click', () => {
+                //     google.accounts.id.prompt(); // For One Tap or automatically show popup if not eligible
+                // });
+
+                // Alternatively, to render Google's default button:
+                /*
+                google.accounts.id.renderButton(
+                    document.getElementById("googleSignInBtn"), // The ID of the container element
+                    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", width: "300" }  // customization attributes
+                );
+                */
+            } else {
+                console.warn("Google Identity Services library not loaded or initialized.");
+                googleSignInBtn.disabled = true; // Disable button if GSI not available
+                googleSignInBtn.textContent = "Google Sign-in Not Available";
+            }
+
+            // Function to handle the Google credential response
+            // This function is now primarily for when Google One Tap or the pop-up
+            // directly provides a credential, *not* for the full redirect flow.
+            // For the full redirect flow initiated by /login/google, the backend
+            // handles the token exchange and redirects the browser.
+            function handleGoogleCredentialResponse(response) {
+                // This part of the code is more relevant if you were using Google One Tap
+                // to directly get the ID token on the client-side *without* a full page redirect
+                // to /login/google first.
+                // However, since we're using Authlib's full redirect flow, this `fetch`
+                // is not the primary way the ID token is handled.
+                // Authlib's /auth/google/callback route handles the token exchange.
+
+                const id_token = response.credential;
+
+                if (id_token) {
+                    showMessage('Google One Tap credential received! Sending token to server...', 'success');
+                    console.log('Google ID Token (first 50 chars):', id_token.substring(0, 50) + '...');
+
+                    // If you *were* to use this for direct client-side token submission,
+                    // you would send it to a backend endpoint that *only* verifies the token
+                    // and doesn't initiate the OAuth flow.
+                    // For our current Authlib setup, the token exchange happens server-side
+                    // after the /login/google redirect.
+
+                    // This fetch call is now somewhat redundant with the Authlib flow,
+                    // but if you wanted a separate endpoint for client-side token verification,
+                    // it would look like this (but target a *different* Flask route):
+                    /*
+                    fetch('/api/verify-google-token', { // A new Flask route for direct token verification
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id_token: id_token }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showMessage('Backend verification successful! Redirecting...', 'success');
+                            window.location.href = '/dashboard';
+                        } else {
+                            showMessage(data.message || 'Google login failed on server. Please try again.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error sending Google token to backend:', error);
+                        showMessage('An error occurred during Google login. Please try again later.', 'error');
+                    });
+                    */
+                    // Since our Authlib flow uses a full redirect, this callback might not fire
+                    // or its `fetch` might not be the primary token handling mechanism.
+                    // The main flow is: HTML click -> /login/google (Flask) -> Google Auth -> /auth/google/callback (Flask)
+                    // The `handleGoogleCredentialResponse` is primarily for Google One Tap.
+                    // If you're using Authlib's full redirect, you might not even need this fetch.
+                    // The user will be redirected to /auth/google/callback by Google directly.
+                    // Let's remove this fetch to avoid confusion with the Authlib flow.
+                    // Instead, the Flask backend's /auth/google/callback will handle the redirect.
+                    // So, if this function *does* fire (e.g., for One Tap), we'll just log it.
+                    console.warn("handleGoogleCredentialResponse fired. In this Authlib setup, the primary token handling is via server-side redirect to /auth/google/callback.");
+                    // You might want to remove the fetch call from here entirely if you're relying solely on Authlib's full redirect flow.
+                    // The user will be redirected by Flask after the Authlib callback.
+                } else {
+                    showMessage('Google sign-in failed. No ID token received.', 'error');
+                }
+            }
+            
+        });
+    </script>
+</body>
+</html>
